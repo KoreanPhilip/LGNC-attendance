@@ -287,7 +287,7 @@ let MEMBERS=[], ATT=[],ALL_ATT=[],chartInst=null,editId=null;
 
 const todayStr=()=>new Date().toISOString().split("T")[0];
 const toast=(m,d=2500)=>{const e=document.getElementById("toast");e.textContent=m;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),d)};
-const ini=(f="",l="")=>((f[0]||"")+(l[0]||"")).toUpperCase()||"?";
+const ini=(f,l)=>(((f||"")[0]||"")+((l||"")[0]||"")).toUpperCase()||"?";
 
 function avCls(g=""){return{Brother:"av-br",Sister:"av-si",Youth:"av-yo","Sunday School":"av-su","New Joiner":"av-nj"}[g]||"av-de"}
 function bdgCls(g=""){return{Brother:"b-br",Sister:"b-si",Youth:"b-yo","Sunday School":"b-su","New Joiner":"b-nj"}[g]||""}
