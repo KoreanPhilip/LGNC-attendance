@@ -103,6 +103,28 @@ tbody tr:hover td{background:#fafaf7}
 .fi label{font-size:12px;font-weight:600;color:var(--t2)}
 .fi input,.fi select,.fi textarea{width:100%}
 .fi textarea{resize:vertical;min-height:72px}
+/* group tabs */
+.gtab{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;color:var(--t2)}
+.gtab.active{background:var(--navy);border-color:var(--navy);color:#fff}
+/* member cards grid */
+.att-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.att-card{background:#fff;border:2px solid var(--border);border-radius:12px;padding:16px 14px;display:flex;flex-direction:column;gap:10px;transition:border-color .15s;position:relative}
+.att-card.is-online{border-color:#4caf50;background:#f9fff9}
+.att-card.is-offline{border-color:#1976d2;background:#f5f9ff}
+.att-card-top{display:flex;align-items:center;gap:10px}
+.att-card-info{flex:1;min-width:0}
+.att-card-name{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.att-card-sub{font-size:11px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.att-card-dots{display:flex;gap:4px;align-items:center}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;title:""}
+.dot-online{background:#4caf50}
+.dot-offline{background:#1976d2}
+.dot-absent{background:#ddd}
+.att-card-btns{display:flex;gap:5px}
+.att-card-btns .mkbtn{flex:1;text-align:center;font-size:11px;padding:5px 4px}
+.att-status-lbl{position:absolute;top:10px;right:10px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
+.lbl-online{background:#e8f5e9;color:#2e7d32}
+.lbl-offline{background:#e3f2fd;color:#1565c0}
 /* empty/loading */
 .empty{text-align:center;padding:48px 20px;color:var(--t3)}
 .empty .ei{font-size:40px;margin-bottom:12px;opacity:.45}
@@ -154,11 +176,6 @@ tbody tr:hover td{background:#fafaf7}
         <span class="day-lbl" id="day-lbl"></span>
       </div>
       <input class="inp-search" type="text" id="att-q" placeholder="🔍 Search name…" oninput="renderAtt()">
-      <select id="att-grp" onchange="renderAtt()">
-        <option value="">All groups</option>
-        <option>Brother</option><option>Sister</option><option>Youth</option>
-        <option>Sunday School</option><option>New Joiner</option>
-      </select>
       <select id="att-st" onchange="renderAtt()">
         <option value="">All status</option>
         <option value="online">Online</option>
@@ -166,6 +183,8 @@ tbody tr:hover td{background:#fafaf7}
         <option value="absent">Absent</option>
       </select>
     </div>
+    <!-- Group tabs -->
+    <div id="att-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px"></div>
     <div id="att-body"><div class="loading">Loading…</div></div>
   </div>
 </div>
@@ -298,6 +317,7 @@ async function init(){
   ]);
   MEMBERS=m.data||[];
   ALL_ATT=a.data||[];
+  renderAttTabs();
   await loadAttendance();
   renderMem();
 }
@@ -328,47 +348,72 @@ function updateMetrics(){
   document.getElementById("m-absent").textContent=MEMBERS.length-ATT.length;
 }
 
+let ATT_GRP_FILTER="";
+
+function renderAttTabs(){
+  const groups=["All","Brother","Sister","Youth","Sunday School","New Joiner"];
+  document.getElementById("att-tabs").innerHTML=groups.map(g=>`
+    <button class="gtab${ATT_GRP_FILTER===(g==="All"?"":g)?" active":""}" onclick="setAttGrp('${g==="All"?"":g}')">${g}</button>
+  `).join("");
+}
+
+function setAttGrp(g){ATT_GRP_FILTER=g;renderAttTabs();renderAtt()}
+
 function renderAtt(){
   const q=(document.getElementById("att-q").value||"").toLowerCase();
-  const grp=document.getElementById("att-grp").value;
   const stf=document.getElementById("att-st").value;
+  // 최근 5주 일요일
+  const recentSundays=getSundays(5);
   const list=MEMBERS.filter(v=>{
     const nm=(v.first_name+" "+(v.last_name||"")).toLowerCase();
     const rec=ATT.find(a=>a.visitor_id===v.id);
     const st=rec?rec.attendance_type:"absent";
-    return(!q||nm.includes(q))&&(!grp||v.group_type===grp)&&(!stf||st===stf);
+    return(!q||nm.includes(q))&&(!ATT_GRP_FILTER||v.group_type===ATT_GRP_FILTER)&&(!stf||st===stf);
   });
   if(!list.length){
     document.getElementById("att-body").innerHTML='<div class="empty"><div class="ei">🔍</div><p>No members match your filters.</p></div>';
     return;
   }
-  document.getElementById("att-body").innerHTML=`<div class="tw"><table>
-    <thead><tr><th>Member</th><th>Group</th><th>Mark Attendance</th><th>Status</th></tr></thead>
-    <tbody>${list.map(v=>{
-      const rec=ATT.find(a=>a.visitor_id===v.id);
-      const st=rec?rec.attendance_type:"absent";
-      return`<tr>
-        <td><div class="name-cell">
-          <div class="av ${avCls(v.group_type)}">${ini(v.first_name,v.last_name)}</div>
-          <div><div style="font-weight:600">${v.first_name||""} ${v.last_name||""}</div>
-          ${v.phone?`<div style="font-size:11px;color:var(--t3)">${v.phone}</div>`:""}</div>
-        </div></td>
-        <td>${v.group_type?`<span class="badge ${bdgCls(v.group_type)}">${v.group_type}</span>`:"—"}</td>
-        <td><div style="display:flex;gap:6px;align-items:center">
-          <button class="mkbtn ${st==="online"?"on":""}" onclick="mark('${v.id}','online')">🌐 Online</button>
-          <button class="mkbtn ${st==="offline"?"off":""}" onclick="mark('${v.id}','offline')">⛪ In Person</button>
-          ${st!=="absent"?`<button class="mkbtn" onclick="unmark('${v.id}')" style="color:var(--red);border-color:#f5c6c6">✕</button>`:""}
-        </div></td>
-        <td><span class="badge b-${st}">${st==="online"?"Online":st==="offline"?"In Person":"Absent"}</span></td>
-      </tr>`;
-    }).join("")}</tbody></table></div>`;
+  const cards=list.map(v=>{
+    const rec=ATT.find(a=>a.visitor_id===v.id);
+    const st=rec?rec.attendance_type:"absent";
+    const cardCls=st==="online"?"is-online":st==="offline"?"is-offline":"";
+    // 최근 5주 점
+    const dots=recentSundays.map(d=>{
+      const r=ALL_ATT.find(a=>a.visitor_id===v.id&&a.service_date===d);
+      const dc=r?(r.attendance_type==="online"?"dot-online":"dot-offline"):"dot-absent";
+      const lbl=r?(r.attendance_type==="online"?"Online":"In Person"):"Absent";
+      return`<span class="dot ${dc}" title="${d}: ${lbl}"></span>`;
+    }).join("");
+    const statusLbl=st==="online"
+      ?`<span class="att-status-lbl lbl-online">Online</span>`
+      :st==="offline"
+      ?`<span class="att-status-lbl lbl-offline">In Person</span>`
+      :"";
+    return`<div class="att-card ${cardCls}">
+      ${statusLbl}
+      <div class="att-card-top">
+        <div class="av ${avCls(v.group_type)}" style="width:38px;height:38px;font-size:13px;flex-shrink:0">${ini(v.first_name,v.last_name)}</div>
+        <div class="att-card-info">
+          <div class="att-card-name">${v.first_name||""} ${v.last_name||""}</div>
+          <div class="att-card-sub">${v.group_type||"Unassigned"}</div>
+        </div>
+      </div>
+      <div class="att-card-dots" title="Recent 5 weeks">${dots}</div>
+      <div class="att-card-btns">
+        <button class="mkbtn ${st==="online"?"on":""}" onclick="mark('${v.id}','online')">🌐 Online</button>
+        <button class="mkbtn ${st==="offline"?"off":""}" onclick="mark('${v.id}','offline')">⛪ In Person</button>
+        ${st!=="absent"?`<button class="mkbtn" onclick="unmark('${v.id}')" style="color:var(--red);border-color:#f5c6c6;flex:0;padding:5px 8px">✕</button>`:""}
+      </div>
+    </div>`;
+  }).join("");
+  document.getElementById("att-body").innerHTML=`<div class="att-grid">${cards}</div>`;
 }
 
 async function mark(id,type){
   const date=document.getElementById("att-date").value;
-  const v=MEMBERS.find(x=>x.id===id);
   const{error}=await db.from("attendance").upsert({
-    visitor_id:id,visitor_name:v?.first_name,visitor_email:v?.email,
+    visitor_id:id,
     service_date:date,present:true,attendance_type:type
   },{onConflict:"visitor_id,service_date"});
   if(error){toast("❌ "+error.message);return}
