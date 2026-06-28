@@ -103,28 +103,27 @@ tbody tr:hover td{background:#fafaf7}
 .fi label{font-size:12px;font-weight:600;color:var(--t2)}
 .fi input,.fi select,.fi textarea{width:100%}
 .fi textarea{resize:vertical;min-height:72px}
-/* group tabs */
-.gtab{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;color:var(--t2)}
-.gtab.active{background:var(--navy);border-color:var(--navy);color:#fff}
-/* member cards grid */
-.att-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
-.att-card{background:#fff;border:2px solid var(--border);border-radius:12px;padding:16px 14px;display:flex;flex-direction:column;gap:10px;transition:border-color .15s;position:relative}
-.att-card.is-online{border-color:#4caf50;background:#f9fff9}
-.att-card.is-offline{border-color:#1976d2;background:#f5f9ff}
-.att-card-top{display:flex;align-items:center;gap:10px}
-.att-card-info{flex:1;min-width:0}
-.att-card-name{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.att-card-sub{font-size:11px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.att-card-dots{display:flex;gap:4px;align-items:center}
-.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;title:""}
+/* compact list */
+.cl-list{display:flex;flex-direction:column;gap:0}
+.cl-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);transition:background .1s}
+.cl-row:last-child{border-bottom:none}
+.cl-row:hover{background:#f7f8fa!important}
+.cl-num{width:22px;font-size:11px;color:var(--t3);text-align:right;flex-shrink:0}
+.cl-av{width:30px;height:30px;font-size:11px;flex-shrink:0}
+.cl-name{flex:1;display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden}
+.cl-nm{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-dots{display:flex;gap:3px;flex-shrink:0}
+.cl-status{width:70px;flex-shrink:0;text-align:center}
+.cl-btns{display:flex;gap:4px;flex-shrink:0}
+.cl-btns .mkbtn{padding:4px 8px;font-size:12px}
+/* dots */
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
 .dot-online{background:#4caf50}
 .dot-offline{background:#1976d2}
 .dot-absent{background:#ddd}
-.att-card-btns{display:flex;gap:5px}
-.att-card-btns .mkbtn{flex:1;text-align:center;font-size:11px;padding:5px 4px}
-.att-status-lbl{position:absolute;top:10px;right:10px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
-.lbl-online{background:#e8f5e9;color:#2e7d32}
-.lbl-offline{background:#e3f2fd;color:#1565c0}
+/* group tabs */
+.gtab{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;color:var(--t2)}
+.gtab.active{background:var(--navy);border-color:var(--navy);color:#fff}
 /* empty/loading */
 .empty{text-align:center;padding:48px 20px;color:var(--t3)}
 .empty .ei{font-size:40px;margin-bottom:12px;opacity:.45}
@@ -362,7 +361,6 @@ function setAttGrp(g){ATT_GRP_FILTER=g;renderAttTabs();renderAtt()}
 function renderAtt(){
   const q=(document.getElementById("att-q").value||"").toLowerCase();
   const stf=document.getElementById("att-st").value;
-  // 최근 5주 일요일
   const recentSundays=getSundays(5);
   const list=MEMBERS.filter(v=>{
     const nm=(v.first_name+" "+(v.last_name||"")).toLowerCase();
@@ -374,40 +372,37 @@ function renderAtt(){
     document.getElementById("att-body").innerHTML='<div class="empty"><div class="ei">🔍</div><p>No members match your filters.</p></div>';
     return;
   }
-  const cards=list.map(v=>{
+  const rows=list.map((v,i)=>{
     const rec=ATT.find(a=>a.visitor_id===v.id);
     const st=rec?rec.attendance_type:"absent";
-    const cardCls=st==="online"?"is-online":st==="offline"?"is-offline":"";
-    // 최근 5주 점
+    const rowBg=st==="online"?"background:#f9fff9":st==="offline"?"background:#f5f9ff":"";
     const dots=recentSundays.map(d=>{
       const r=ALL_ATT.find(a=>a.visitor_id===v.id&&a.service_date===d);
       const dc=r?(r.attendance_type==="online"?"dot-online":"dot-offline"):"dot-absent";
-      const lbl=r?(r.attendance_type==="online"?"Online":"In Person"):"Absent";
-      return`<span class="dot ${dc}" title="${d}: ${lbl}"></span>`;
+      return`<span class="dot ${dc}" title="${d}"></span>`;
     }).join("");
-    const statusLbl=st==="online"
-      ?`<span class="att-status-lbl lbl-online">Online</span>`
+    const stBadge=st==="online"
+      ?`<span style="font-size:10px;font-weight:700;color:#2e7d32;background:#e8f5e9;padding:2px 7px;border-radius:10px">Online</span>`
       :st==="offline"
-      ?`<span class="att-status-lbl lbl-offline">In Person</span>`
-      :"";
-    return`<div class="att-card ${cardCls}">
-      ${statusLbl}
-      <div class="att-card-top">
-        <div class="av ${avCls(v.group_type)}" style="width:38px;height:38px;font-size:13px;flex-shrink:0">${ini(v.first_name,v.last_name)}</div>
-        <div class="att-card-info">
-          <div class="att-card-name">${v.first_name||""} ${v.last_name||""}</div>
-          <div class="att-card-sub">${v.group_type||"Unassigned"}</div>
-        </div>
+      ?`<span style="font-size:10px;font-weight:700;color:#1565c0;background:#e3f2fd;padding:2px 7px;border-radius:10px">In Person</span>`
+      :`<span style="font-size:10px;color:var(--t3)">—</span>`;
+    return`<div class="cl-row" style="${rowBg}">
+      <div class="cl-num">${i+1}</div>
+      <div class="cl-av av ${avCls(v.group_type)}">${ini(v.first_name,v.last_name)}</div>
+      <div class="cl-name">
+        <span class="cl-nm">${v.first_name||""} ${v.last_name||""}</span>
+        ${v.group_type?`<span class="badge ${bdgCls(v.group_type)}" style="font-size:10px;padding:1px 7px">${v.group_type}</span>`:""}
       </div>
-      <div class="att-card-dots" title="Recent 5 weeks">${dots}</div>
-      <div class="att-card-btns">
-        <button class="mkbtn ${st==="online"?"on":""}" onclick="mark('${v.id}','online')">🌐 Online</button>
-        <button class="mkbtn ${st==="offline"?"off":""}" onclick="mark('${v.id}','offline')">⛪ In Person</button>
-        ${st!=="absent"?`<button class="mkbtn" onclick="unmark('${v.id}')" style="color:var(--red);border-color:#f5c6c6;flex:0;padding:5px 8px">✕</button>`:""}
+      <div class="cl-dots">${dots}</div>
+      <div class="cl-status">${stBadge}</div>
+      <div class="cl-btns">
+        <button class="mkbtn ${st==="online"?"on":""}" onclick="mark('${v.id}','online')">🌐</button>
+        <button class="mkbtn ${st==="offline"?"off":""}" onclick="mark('${v.id}','offline')">⛪</button>
+        ${st!=="absent"?`<button class="mkbtn" onclick="unmark('${v.id}')" style="color:var(--red);border-color:#f5c6c6">✕</button>`:""}
       </div>
     </div>`;
   }).join("");
-  document.getElementById("att-body").innerHTML=`<div class="att-grid">${cards}</div>`;
+  document.getElementById("att-body").innerHTML=`<div class="cl-list">${rows}</div>`;
 }
 
 async function mark(id,type){
