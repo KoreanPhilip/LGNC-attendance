@@ -323,7 +323,9 @@ tbody tr:hover td{background:#fafaf7}
         </div>
         <div class="fi"><label>Phone</label><input type="tel" id="f-phone" placeholder="07700 000000"></div>
         <div class="fi"><label>Email</label><input type="email" id="f-email" placeholder="james@email.com"></div>
-        <div class="fi full"><label>Location</label><input type="text" id="f-location" placeholder="e.g. Ealing, London"></div>
+        <div class="fi"><label>Nationality</label><input type="text" id="f-nationality" placeholder="e.g. Korean, Ghanaian"></div>
+        <div class="fi"><label>Date of Birth</label><input type="date" id="f-birth"></div>
+        <div class="fi"><label>Location</label><input type="text" id="f-location" placeholder="e.g. Ealing, London"></div>
         <div class="fi full"><label>Notes</label><textarea id="f-notes" placeholder="Any additional notes…"></textarea></div>
       </div>
     </div>
@@ -497,7 +499,7 @@ function renderMem(){
     return;
   }
   document.getElementById("mem-body").innerHTML=`<div class="tw"><table>
-    <thead><tr><th>Member</th><th>Group</th><th>Gender</th><th>Phone</th><th>Location</th><th>Notes</th><th></th></tr></thead>
+    <thead><tr><th>Member</th><th>Group</th><th>Gender</th><th>Nationality</th><th>Birth</th><th>Phone</th><th>Location</th><th>Notes</th><th></th></tr></thead>
     <tbody>${list.map(v=>`<tr>
       <td><div class="name-cell">
         <div class="av ${avCls(v.group_type)}">${ini(v.first_name,v.last_name)}</div>
@@ -506,6 +508,8 @@ function renderMem(){
       </div></td>
       <td>${v.group_type?`<span class="badge ${bdgCls(v.group_type)}">${v.group_type}</span>`:"—"}</td>
       <td style="color:var(--t2)">${v.gender||"—"}</td>
+      <td style="color:var(--t2)">${v.nationality||"—"}</td>
+      <td style="color:var(--t2)">${v.birth?v.birth.slice(0,10).split('-').reverse().join('-'):"—"}</td>
       <td style="color:var(--t2)">${v.phone||"—"}</td>
       <td style="color:var(--t2)">${v.location||"—"}</td>
       <td style="color:var(--t3);font-size:12px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(v.notes||"").replace(/"/g,"&quot;")}">${v.notes||"—"}</td>
@@ -520,7 +524,8 @@ function openAdd(){
   editId=null;
   document.getElementById("modal-ttl").textContent="Add New Member";
   document.getElementById("save-btn").textContent="Add Member";
-  ["f-first","f-last","f-phone","f-email","f-location","f-notes"].forEach(id=>document.getElementById(id).value="");
+  ["f-first","f-last","f-phone","f-email","f-nationality","f-location","f-notes"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("f-birth").value="";
   document.getElementById("f-gender").value="";
   document.getElementById("f-group").value="";
   document.getElementById("modal").classList.add("open");
@@ -535,6 +540,8 @@ function openEdit(id){
   document.getElementById("f-last").value=v.last_name||"";
   document.getElementById("f-phone").value=v.phone||"";
   document.getElementById("f-email").value=v.email||"";
+  document.getElementById("f-nationality").value=v.nationality||"";
+  document.getElementById("f-birth").value=v.birth||"";
   document.getElementById("f-location").value=v.location||"";
   document.getElementById("f-notes").value=v.notes||"";
   document.getElementById("f-gender").value=v.gender||"";
@@ -554,6 +561,8 @@ async function saveMember(){
     group_type:document.getElementById("f-group").value||null,
     phone:document.getElementById("f-phone").value.trim()||null,
     email:document.getElementById("f-email").value.trim()||null,
+    nationality:document.getElementById("f-nationality").value.trim()||null,
+    birth:document.getElementById("f-birth").value||null,
     location:document.getElementById("f-location").value.trim()||null,
     notes:document.getElementById("f-notes").value.trim()||null,
   };
