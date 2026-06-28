@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LGNC Attendance</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1B2A4A;--navy2:#243560;--gold:#C9A84C;--gold2:#e0c06a;
+  --red:#8B1A1A;--bg:#F7F6F2;--white:#fff;--border:#E4E1D8;
+  --t1:#1a1a1a;--t2:#555;--t3:#999;--r:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--t1);font-size:14px;line-height:1.6;min-height:100vh}
+.layout{display:flex;min-height:100vh}
+/* sidebar */
+.sidebar{width:230px;background:var(--navy);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
+.main{margin-left:230px;flex:1;padding:32px 28px}
+.sb-logo{padding:28px 20px 20px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sb-cross{font-size:24px;margin-bottom:8px}
+.sb-name{color:#fff;font-size:14px;font-weight:700;line-height:1.3;letter-spacing:-0.2px}
+.sb-tag{color:rgba(255,255,255,0.38);font-size:10px;margin-top:5px;line-height:1.5}
+.sb-section{padding:18px 14px 6px;color:rgba(255,255,255,0.28);font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:11px 18px;color:rgba(255,255,255,0.6);cursor:pointer;border-radius:8px;margin:2px 10px;transition:all 0.15s;font-size:13px;border:none;background:none;width:calc(100% - 20px);text-align:left;font-family:inherit}
+.nav-btn:hover{background:rgba(255,255,255,0.07);color:#fff}
+.nav-btn.active{background:var(--gold);color:#fff;font-weight:600}
+.nav-btn .ico{font-size:16px;width:22px;text-align:center}
+.sb-foot{margin-top:auto;padding:16px;border-top:1px solid rgba(255,255,255,0.07);color:rgba(255,255,255,0.25);font-size:11px;text-align:center}
+/* page */
+.page{display:none}.page.active{display:block}
+.ph{margin-bottom:26px}
+.ph h1{font-size:22px;font-weight:700;color:var(--navy);letter-spacing:-0.4px}
+.ph p{color:var(--t2);font-size:13px;margin-top:3px}
+/* metrics */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:14px;margin-bottom:24px}
+.mc{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;position:relative;overflow:hidden}
+.mc::after{content:"";position:absolute;bottom:0;left:0;right:0;height:3px}
+.mc.gold::after{background:var(--gold)}.mc.navy::after{background:var(--navy)}.mc.red::after{background:var(--red)}.mc.green::after{background:#4caf50}.mc.plain::after{background:var(--border)}
+.mv{font-size:32px;font-weight:700;color:var(--navy);line-height:1}
+.ml{font-size:12px;color:var(--t3);margin-top:5px;font-weight:500}
+/* card */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:22px 26px;margin-bottom:20px}
+.card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.card-ttl{font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px}
+/* toolbar */
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+input,select,textarea{font-family:inherit;font-size:13px;color:var(--t1);background:var(--white);border:1px solid var(--border);border-radius:8px;padding:9px 12px;outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+.inp-search{min-width:200px;flex:1}
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;font-size:13px;font-weight:500;border-radius:8px;border:1px solid var(--border);background:var(--white);color:var(--t1);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
+.btn:hover{background:var(--bg)}
+.btn-primary{background:var(--gold);border-color:var(--gold);color:#fff}
+.btn-primary:hover{background:var(--gold2);border-color:var(--gold2)}
+.btn-danger{color:var(--red);border-color:#f5c6c6}
+.btn-danger:hover{background:#fff5f5}
+.btn-sm{padding:5px 11px;font-size:12px;border-radius:6px}
+.btn-ghost{border-color:transparent;background:transparent}
+.btn-ghost:hover{background:var(--bg)}
+.mkbtn{padding:5px 13px;font-size:12px;border-radius:20px;border:1.5px solid var(--border);background:#fff;cursor:pointer;transition:all .12s;font-family:inherit;font-weight:500}
+.mkbtn:hover{border-color:var(--gold)}
+.mkbtn.on{background:#e8f5e9;border-color:#4caf50;color:#2e7d32}
+.mkbtn.off{background:#e3f2fd;border-color:#1976d2;color:#1565c0}
+/* table */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap;background:var(--bg)}
+tbody td{padding:13px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#fafaf7}
+.name-cell{display:flex;align-items:center;gap:10px}
+.av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;color:#fff}
+.av-br{background:var(--navy)}.av-si{background:var(--red)}.av-yo{background:#6b3fa0}.av-su{background:#2e7d32}.av-nj{background:#e65100}.av-de{background:var(--gold)}
+/* badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.b-online{background:#e8f5e9;color:#2e7d32}.b-online::before{background:#4caf50}
+.b-offline{background:#e3f2fd;color:#1565c0}.b-offline::before{background:#1976d2}
+.b-absent{background:#f5f5f5;color:#999}.b-absent::before{background:#ccc}
+.b-br{background:#e8eaf6;color:#1B2A4A}.b-br::before{background:#1B2A4A}
+.b-si{background:#fce4ec;color:#8B1A1A}.b-si::before{background:#8B1A1A}
+.b-yo{background:#f3e5f5;color:#6b3fa0}.b-yo::before{background:#6b3fa0}
+.b-su{background:#e8f5e9;color:#2e7d32}.b-su::before{background:#2e7d32}
+.b-nj{background:#fff3e0;color:#e65100}.b-nj::before{background:#e65100}
+/* progress */
+.pw{display:flex;align-items:center;gap:8px}
+.pt{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;max-width:90px}
+.pf{height:100%;background:var(--gold);border-radius:3px}
+.pp{font-size:12px;color:var(--t3);min-width:32px}
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:500;padding:20px;backdrop-filter:blur(3px)}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:520px;max-width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-hd{padding:26px 28px 0;display:flex;align-items:center;justify-content:space-between}
+.modal-hd h2{font-size:17px;font-weight:700;color:var(--navy)}
+.modal-bd{padding:20px 28px}
+.modal-ft{padding:16px 28px 26px;display:flex;gap:8px;justify-content:flex-end}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fi{display:flex;flex-direction:column;gap:5px}
+.fi.full{grid-column:1/-1}
+.fi label{font-size:12px;font-weight:600;color:var(--t2)}
+.fi input,.fi select,.fi textarea{width:100%}
+.fi textarea{resize:vertical;min-height:72px}
+/* empty/loading */
+.empty{text-align:center;padding:48px 20px;color:var(--t3)}
+.empty .ei{font-size:40px;margin-bottom:12px;opacity:.45}
+.loading{text-align:center;padding:40px;color:var(--t3)}
+/* chart */
+.chart-box{position:relative;height:260px}
+/* date nav */
+.date-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.day-lbl{font-size:12px;color:var(--t3);white-space:nowrap;font-weight:500}
+/* toast */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(8px);background:#1a1a1a;color:#fff;padding:11px 22px;border-radius:30px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:all .25s;z-index:999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-cross">✝</div>
+    <div class="sb-name">London Good News Church</div>
+    <div class="sb-tag">With the Gospel to the End,<br>With the Lord to the Last</div>
+  </div>
+  <div class="sb-section">Menu</div>
+  <button class="nav-btn active" onclick="nav('attendance',this)"><span class="ico">📋</span>Attendance</button>
+  <button class="nav-btn" onclick="nav('members',this)"><span class="ico">👥</span>Members</button>
+  <button class="nav-btn" onclick="nav('statistics',this)"><span class="ico">📊</span>Statistics</button>
+  <div class="sb-foot">LGNC Admin &middot; 2025</div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- ATTENDANCE -->
+<div id="page-attendance" class="page active">
+  <div class="ph"><h1>Sunday Attendance</h1><p>Mark and track weekly attendance records</p></div>
+  <div class="metrics">
+    <div class="mc navy"><div class="mv" id="m-total">—</div><div class="ml">Total Members</div></div>
+    <div class="mc gold"><div class="mv" id="m-present">—</div><div class="ml">Present</div></div>
+    <div class="mc green"><div class="mv" id="m-online">—</div><div class="ml">Online</div></div>
+    <div class="mc plain"><div class="mv" id="m-offline">—</div><div class="ml">In Person</div></div>
+    <div class="mc red"><div class="mv" id="m-absent">—</div><div class="ml">Absent</div></div>
+  </div>
+  <div class="card">
+    <div class="toolbar">
+      <div class="date-row">
+        <input type="date" id="att-date" onchange="loadAttendance()">
+        <span class="day-lbl" id="day-lbl"></span>
+      </div>
+      <input class="inp-search" type="text" id="att-q" placeholder="🔍 Search name…" oninput="renderAtt()">
+      <select id="att-grp" onchange="renderAtt()">
+        <option value="">All groups</option>
+        <option>Brother</option><option>Sister</option><option>Youth</option>
+        <option>Sunday School</option><option>New Joiner</option>
+      </select>
+      <select id="att-st" onchange="renderAtt()">
+        <option value="">All status</option>
+        <option value="online">Online</option>
+        <option value="offline">In Person</option>
+        <option value="absent">Absent</option>
+      </select>
+    </div>
+    <div id="att-body"><div class="loading">Loading…</div></div>
+  </div>
+</div>
+
+<!-- MEMBERS -->
+<div id="page-members" class="page">
+  <div class="ph"><h1>Member Directory</h1><p>Manage congregation member profiles</p></div>
+  <div class="card">
+    <div class="card-hd">
+      <div class="toolbar" style="margin:0">
+        <input class="inp-search" type="text" id="mem-q" placeholder="🔍 Search name, phone, email…" oninput="renderMem()">
+        <select id="mem-grp" onchange="renderMem()">
+          <option value="">All groups</option>
+          <option>Brother</option><option>Sister</option><option>Youth</option>
+          <option>Sunday School</option><option>New Joiner</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="openAdd()">+ Add Member</button>
+    </div>
+    <div id="mem-body"><div class="loading">Loading…</div></div>
+  </div>
+</div>
+
+<!-- STATISTICS -->
+<div id="page-statistics" class="page">
+  <div class="ph"><h1>Statistics</h1><p>Attendance trends and group breakdown</p></div>
+  <div class="metrics">
+    <div class="mc gold"><div class="mv" id="s-avg">—</div><div class="ml">Avg. Weekly Attendance</div></div>
+    <div class="mc navy"><div class="mv" id="s-peak">—</div><div class="ml">Peak Attendance</div></div>
+    <div class="mc green"><div class="mv" id="s-rate">—</div><div class="ml">Avg. Attendance Rate</div></div>
+    <div class="mc plain"><div class="mv" id="s-weeks">—</div><div class="ml">Weeks Recorded</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-ttl">Weekly Attendance Trend</div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="display:flex;gap:14px;font-size:12px;color:var(--t3)">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#1976d2;display:inline-block"></span>Online</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:var(--gold);display:inline-block"></span>In Person</span>
+        </div>
+        <select id="s-range" onchange="buildChart()" style="font-size:12px;padding:6px 10px">
+          <option value="8">Last 8 weeks</option>
+          <option value="12">Last 12 weeks</option>
+          <option value="16">Last 16 weeks</option>
+        </select>
+      </div>
+    </div>
+    <div class="chart-box"><canvas id="attChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-ttl" style="margin-bottom:16px">Attendance by Group</div>
+    <div id="grp-body"><div class="loading">Loading…</div></div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- MEMBER MODAL -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2 id="modal-ttl">Add New Member</h2>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()" style="font-size:20px;padding:2px 8px;line-height:1">×</button>
+    </div>
+    <div class="modal-bd">
+      <div class="fg">
+        <div class="fi"><label>First Name *</label><input type="text" id="f-first" placeholder="e.g. James"></div>
+        <div class="fi"><label>Last Name</label><input type="text" id="f-last" placeholder="e.g. Kim"></div>
+        <div class="fi"><label>Gender</label>
+          <select id="f-gender"><option value="">— Select —</option><option>Male</option><option>Female</option></select>
+        </div>
+        <div class="fi"><label>Group</label>
+          <select id="f-group"><option value="">— Select —</option>
+            <option>Brother</option><option>Sister</option><option>Youth</option>
+            <option>Sunday School</option><option>New Joiner</option>
+          </select>
+        </div>
+        <div class="fi"><label>Phone</label><input type="tel" id="f-phone" placeholder="07700 000000"></div>
+        <div class="fi"><label>Email</label><input type="email" id="f-email" placeholder="james@email.com"></div>
+        <div class="fi full"><label>Location</label><input type="text" id="f-location" placeholder="e.g. Ealing, London"></div>
+        <div class="fi full"><label>Notes</label><textarea id="f-notes" placeholder="Any additional notes…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="save-btn" onclick="saveMember()">Add Member</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* CONFIG */
+const SB_URL = "https://hwkfseodxwlctwdukfkf.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3a2ZzZW9keHdsY3R3ZHVrZmtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDY0NDYsImV4cCI6MjA5NzgyMjQ0Nn0.-b-WEQYfw8UCAP2tsegG0VdQTqRAcbbNzJblVH4x9IE";
+const db = supabase.createClient(SB_URL, SB_KEY);
+
+let MEMBERS=[], ATT=[],ALL_ATT=[],chartInst=null,editId=null;
+
+const todayStr=()=>new Date().toISOString().split("T")[0];
+const toast=(m,d=2500)=>{const e=document.getElementById("toast");e.textContent=m;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),d)};
+const ini=(f="",l="")=>((f[0]||"")+(l[0]||"")).toUpperCase()||"?";
+
+function avCls(g=""){return{Brother:"av-br",Sister:"av-si",Youth:"av-yo","Sunday School":"av-su","New Joiner":"av-nj"}[g]||"av-de"}
+function bdgCls(g=""){return{Brother:"b-br",Sister:"b-si",Youth:"b-yo","Sunday School":"b-su","New Joiner":"b-nj"}[g]||""}
+
+function getSundays(n){
+  const a=[],d=new Date();
+  d.setDate(d.getDate()-d.getDay());
+  for(let i=0;i<n;i++){a.unshift(d.toISOString().split("T")[0]);d.setDate(d.getDate()-7)}
+  return a;
+}
+
+function nav(page,btn){
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("page-"+page).classList.add("active");
+  if(page==="statistics"){buildChart();renderGrp()}
+}
+
+async function init(){
+  document.getElementById("att-date").value=todayStr();
+  updateDayLbl();
+  const[m,a]=await Promise.all([
+    db.from("visitors").select("*").order("first_name"),
+    db.from("attendance").select("*")
+  ]);
+  MEMBERS=m.data||[];
+  ALL_ATT=a.data||[];
+  await loadAttendance();
+  renderMem();
+}
+
+function updateDayLbl(){
+  const v=document.getElementById("att-date").value;
+  if(!v)return;
+  const d=new Date(v+"T00:00:00");
+  document.getElementById("day-lbl").textContent=d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+}
+
+async function loadAttendance(){
+  updateDayLbl();
+  const date=document.getElementById("att-date").value;
+  const{data}=await db.from("attendance").select("*").eq("service_date",date);
+  ATT=data||[];
+  renderAtt();
+  updateMetrics();
+}
+
+function updateMetrics(){
+  const on=ATT.filter(a=>a.attendance_type==="online").length;
+  const off=ATT.filter(a=>a.attendance_type==="offline").length;
+  document.getElementById("m-total").textContent=MEMBERS.length;
+  document.getElementById("m-present").textContent=ATT.length;
+  document.getElementById("m-online").textContent=on;
+  document.getElementById("m-offline").textContent=off;
+  document.getElementById("m-absent").textContent=MEMBERS.length-ATT.length;
+}
+
+function renderAtt(){
+  const q=(document.getElementById("att-q").value||"").toLowerCase();
+  const grp=document.getElementById("att-grp").value;
+  const stf=document.getElementById("att-st").value;
+  const list=MEMBERS.filter(v=>{
+    const nm=(v.first_name+" "+(v.last_name||"")).toLowerCase();
+    const rec=ATT.find(a=>a.visitor_id===v.id);
+    const st=rec?rec.attendance_type:"absent";
+    return(!q||nm.includes(q))&&(!grp||v.group_type===grp)&&(!stf||st===stf);
+  });
+  if(!list.length){
+    document.getElementById("att-body").innerHTML='<div class="empty"><div class="ei">🔍</div><p>No members match your filters.</p></div>';
+    return;
+  }
+  document.getElementById("att-body").innerHTML=`<div class="tw"><table>
+    <thead><tr><th>Member</th><th>Group</th><th>Mark Attendance</th><th>Status</th></tr></thead>
+    <tbody>${list.map(v=>{
+      const rec=ATT.find(a=>a.visitor_id===v.id);
+      const st=rec?rec.attendance_type:"absent";
+      return`<tr>
+        <td><div class="name-cell">
+          <div class="av ${avCls(v.group_type)}">${ini(v.first_name,v.last_name)}</div>
+          <div><div style="font-weight:600">${v.first_name||""} ${v.last_name||""}</div>
+          ${v.phone?`<div style="font-size:11px;color:var(--t3)">${v.phone}</div>`:""}</div>
+        </div></td>
+        <td>${v.group_type?`<span class="badge ${bdgCls(v.group_type)}">${v.group_type}</span>`:"—"}</td>
+        <td><div style="display:flex;gap:6px;align-items:center">
+          <button class="mkbtn ${st==="online"?"on":""}" onclick="mark('${v.id}','online')">🌐 Online</button>
+          <button class="mkbtn ${st==="offline"?"off":""}" onclick="mark('${v.id}','offline')">⛪ In Person</button>
+          ${st!=="absent"?`<button class="mkbtn" onclick="unmark('${v.id}')" style="color:var(--red);border-color:#f5c6c6">✕</button>`:""}
+        </div></td>
+        <td><span class="badge b-${st}">${st==="online"?"Online":st==="offline"?"In Person":"Absent"}</span></td>
+      </tr>`;
+    }).join("")}</tbody></table></div>`;
+}
+
+async function mark(id,type){
+  const date=document.getElementById("att-date").value;
+  const v=MEMBERS.find(x=>x.id===id);
+  const{error}=await db.from("attendance").upsert({
+    visitor_id:id,visitor_name:v?.first_name,visitor_email:v?.email,
+    service_date:date,present:true,attendance_type:type
+  },{onConflict:"visitor_id,service_date"});
+  if(error){toast("❌ "+error.message);return}
+  ALL_ATT=ALL_ATT.filter(a=>!(a.visitor_id===id&&a.service_date===date));
+  ALL_ATT.push({visitor_id:id,service_date:date,attendance_type:type});
+  await loadAttendance();
+  toast(type==="online"?"🌐 Marked online":"⛪ Marked in person");
+}
+
+async function unmark(id){
+  const date=document.getElementById("att-date").value;
+  await db.from("attendance").delete().eq("visitor_id",id).eq("service_date",date);
+  ALL_ATT=ALL_ATT.filter(a=>!(a.visitor_id===id&&a.service_date===date));
+  await loadAttendance();
+  toast("✓ Attendance removed");
+}
+
+function renderMem(){
+  const q=(document.getElementById("mem-q").value||"").toLowerCase();
+  const grp=document.getElementById("mem-grp").value;
+  const list=MEMBERS.filter(v=>{
+    const s=((v.first_name||"")+" "+(v.last_name||"")+" "+(v.email||"")+" "+(v.phone||"")).toLowerCase();
+    return(!q||s.includes(q))&&(!grp||v.group_type===grp);
+  });
+  if(!list.length){
+    document.getElementById("mem-body").innerHTML='<div class="empty"><div class="ei">👥</div><p>No members found. Click <strong>+ Add Member</strong> to get started.</p></div>';
+    return;
+  }
+  document.getElementById("mem-body").innerHTML=`<div class="tw"><table>
+    <thead><tr><th>Member</th><th>Group</th><th>Gender</th><th>Phone</th><th>Location</th><th>Notes</th><th></th></tr></thead>
+    <tbody>${list.map(v=>`<tr>
+      <td><div class="name-cell">
+        <div class="av ${avCls(v.group_type)}">${ini(v.first_name,v.last_name)}</div>
+        <div><div style="font-weight:600">${v.first_name||""} ${v.last_name||""}</div>
+        ${v.email?`<div style="font-size:11px;color:var(--t3)">${v.email}</div>`:""}</div>
+      </div></td>
+      <td>${v.group_type?`<span class="badge ${bdgCls(v.group_type)}">${v.group_type}</span>`:"—"}</td>
+      <td style="color:var(--t2)">${v.gender||"—"}</td>
+      <td style="color:var(--t2)">${v.phone||"—"}</td>
+      <td style="color:var(--t2)">${v.location||"—"}</td>
+      <td style="color:var(--t3);font-size:12px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(v.notes||"").replace(/"/g,"&quot;")}">${v.notes||"—"}</td>
+      <td><div style="display:flex;gap:5px">
+        <button class="btn btn-sm btn-ghost" onclick="openEdit('${v.id}')">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="delMem('${v.id}')">Remove</button>
+      </div></td>
+    </tr>`).join("")}</tbody></table></div>`;
+}
+
+function openAdd(){
+  editId=null;
+  document.getElementById("modal-ttl").textContent="Add New Member";
+  document.getElementById("save-btn").textContent="Add Member";
+  ["f-first","f-last","f-phone","f-email","f-location","f-notes"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("f-gender").value="";
+  document.getElementById("f-group").value="";
+  document.getElementById("modal").classList.add("open");
+}
+
+function openEdit(id){
+  editId=id;
+  const v=MEMBERS.find(x=>x.id===id);if(!v)return;
+  document.getElementById("modal-ttl").textContent="Edit Member";
+  document.getElementById("save-btn").textContent="Save Changes";
+  document.getElementById("f-first").value=v.first_name||"";
+  document.getElementById("f-last").value=v.last_name||"";
+  document.getElementById("f-phone").value=v.phone||"";
+  document.getElementById("f-email").value=v.email||"";
+  document.getElementById("f-location").value=v.location||"";
+  document.getElementById("f-notes").value=v.notes||"";
+  document.getElementById("f-gender").value=v.gender||"";
+  document.getElementById("f-group").value=v.group_type||"";
+  document.getElementById("modal").classList.add("open");
+}
+
+function closeModal(){document.getElementById("modal").classList.remove("open");editId=null}
+
+async function saveMember(){
+  const first=document.getElementById("f-first").value.trim();
+  if(!first){toast("❌ First name is required");return}
+  const payload={
+    first_name:first,
+    last_name:document.getElementById("f-last").value.trim()||null,
+    gender:document.getElementById("f-gender").value||null,
+    group_type:document.getElementById("f-group").value||null,
+    phone:document.getElementById("f-phone").value.trim()||null,
+    email:document.getElementById("f-email").value.trim()||null,
+    location:document.getElementById("f-location").value.trim()||null,
+    notes:document.getElementById("f-notes").value.trim()||null,
+  };
+  if(editId){
+    const{error}=await db.from("visitors").update(payload).eq("id",editId);
+    if(error){toast("❌ "+error.message);return}
+    const i=MEMBERS.findIndex(v=>v.id===editId);
+    if(i>-1)MEMBERS[i]={...MEMBERS[i],...payload};
+    toast("✓ Member updated");
+  } else {
+    const{data,error}=await db.from("visitors").insert([payload]).select();
+    if(error){toast("❌ "+error.message);return}
+    MEMBERS.push(...(data||[]));
+    toast("✓ Member added");
+  }
+  closeModal();renderMem();updateMetrics();
+}
+
+async function delMem(id){
+  if(!confirm("Remove this member permanently?"))return;
+  const{error}=await db.from("visitors").delete().eq("id",id);
+  if(error){toast("❌ "+error.message);return}
+  MEMBERS=MEMBERS.filter(v=>v.id!==id);
+  renderMem();updateMetrics();toast("✓ Member removed");
+}
+
+function buildChart(){
+  const n=parseInt(document.getElementById("s-range").value);
+  const su=getSundays(n);
+  const labels=su.map(d=>{const[,m,day]=d.split("-");return`${day}/${m}`});
+  const on=su.map(d=>ALL_ATT.filter(a=>a.service_date===d&&a.attendance_type==="online").length);
+  const off=su.map(d=>ALL_ATT.filter(a=>a.service_date===d&&a.attendance_type==="offline").length);
+  const tot=su.map((_,i)=>on[i]+off[i]);
+  const nz=tot.filter(x=>x>0);
+  const avg=nz.length?Math.round(nz.reduce((a,b)=>a+b,0)/nz.length):0;
+  const peak=nz.length?Math.max(...nz):0;
+  const rate=MEMBERS.length&&avg?Math.round(avg/MEMBERS.length*100):0;
+  document.getElementById("s-avg").textContent=avg;
+  document.getElementById("s-peak").textContent=peak;
+  document.getElementById("s-rate").textContent=rate+"%";
+  document.getElementById("s-weeks").textContent=nz.length;
+  const ctx=document.getElementById("attChart").getContext("2d");
+  if(chartInst)chartInst.destroy();
+  chartInst=new Chart(ctx,{
+    type:"bar",
+    data:{labels,datasets:[
+      {label:"In Person",data:off,backgroundColor:"#C9A84C",stack:"a",borderRadius:3},
+      {label:"Online",data:on,backgroundColor:"#1976d2",stack:"a",borderRadius:3}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{font:{size:11},maxRotation:45}},
+        y:{stacked:true,beginAtZero:true,ticks:{stepSize:1,font:{size:11}},grid:{color:"#f0f0f0"}}
+      }
+    }
+  });
+}
+
+function renderGrp(){
+  const groups={};
+  MEMBERS.forEach(v=>{const g=v.group_type||"Unassigned";if(!groups[g])groups[g]={total:0,present:0};groups[g].total++});
+  ATT.forEach(a=>{const v=MEMBERS.find(x=>x.id===a.visitor_id);const g=v?.group_type||"Unassigned";if(groups[g])groups[g].present++});
+  const rows=Object.entries(groups).sort((a,b)=>b[1].total-a[1].total);
+  document.getElementById("grp-body").innerHTML=`<div class="tw"><table>
+    <thead><tr><th>Group</th><th>Members</th><th>Present Today</th><th>Attendance Rate</th></tr></thead>
+    <tbody>${rows.map(([g,{total,present}])=>{
+      const r=total?Math.round(present/total*100):0;
+      return`<tr>
+        <td>${g?`<span class="badge ${bdgCls(g)}">${g}</span>`:g}</td>
+        <td style="font-weight:600">${total}</td><td>${present}</td>
+        <td><div class="pw"><div class="pt"><div class="pf" style="width:${r}%"></div></div><span class="pp">${r}%</span></div></td>
+      </tr>`;
+    }).join("")}</tbody></table></div>`;
+}
+
+document.getElementById("modal").addEventListener("click",function(e){if(e.target===this)closeModal()});
+init();
+</script>
+</body>
+</html>
