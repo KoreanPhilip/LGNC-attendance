@@ -325,6 +325,16 @@ tbody tr:hover td{background:#fafaf7}
         <div class="fi"><label>Email</label><input type="email" id="f-email" placeholder="james@email.com"></div>
         <div class="fi"><label>Nationality</label><input type="text" id="f-nationality" placeholder="e.g. Korean, Ghanaian"></div>
         <div class="fi"><label>Date of Birth</label><input type="date" id="f-birth"></div>
+        <div class="fi"><label>Cell Group</label>
+          <select id="f-cell"><option value="">— Select —</option>
+            <option value="1">Cell 1</option><option value="2">Cell 2</option>
+            <option value="3">Cell 3</option><option value="4">Cell 4</option>
+            <option value="5">Cell 5</option><option value="6">Cell 6</option>
+          </select>
+        </div>
+        <div class="fi"><label>Cell Leader?</label>
+          <select id="f-cell-leader"><option value="">— Select —</option><option value="true">Yes</option><option value="false">No</option></select>
+        </div>
         <div class="fi"><label>Location</label><input type="text" id="f-location" placeholder="e.g. Ealing, London"></div>
         <div class="fi full"><label>Notes</label><textarea id="f-notes" placeholder="Any additional notes…"></textarea></div>
       </div>
@@ -499,7 +509,7 @@ function renderMem(){
     return;
   }
   document.getElementById("mem-body").innerHTML=`<div class="tw"><table>
-    <thead><tr><th>Member</th><th>Group</th><th>Gender</th><th>Nationality</th><th>Birth</th><th>Phone</th><th>Location</th><th>Notes</th><th></th></tr></thead>
+    <thead><tr><th>Member</th><th>Group</th><th>Cell</th><th>Gender</th><th>Nationality</th><th>Birth</th><th>Phone</th><th>Location</th><th>Notes</th><th></th></tr></thead>
     <tbody>${list.map(v=>`<tr>
       <td><div class="name-cell">
         <div class="av ${avCls(v.group_type)}">${ini(v.first_name,v.last_name)}</div>
@@ -507,6 +517,7 @@ function renderMem(){
         ${v.email?`<div style="font-size:11px;color:var(--t3)">${v.email}</div>`:""}</div>
       </div></td>
       <td>${v.group_type?`<span class="badge ${bdgCls(v.group_type)}">${v.group_type}</span>`:"—"}</td>
+      <td>${v.cell_group?`<span style="font-size:12px;font-weight:700;color:var(--navy)">Cell ${v.cell_group}</span>${v.cell_leader?` <span style="font-size:10px;background:#fff3cd;color:#856404;padding:1px 5px;border-radius:8px;font-weight:600">Leader</span>`:""}` :"—"}</td>
       <td style="color:var(--t2)">${v.gender||"—"}</td>
       <td style="color:var(--t2)">${v.nationality||"—"}</td>
       <td style="color:var(--t2)">${v.birth?v.birth.slice(0,10).split('-').reverse().join('-'):"—"}</td>
@@ -526,6 +537,8 @@ function openAdd(){
   document.getElementById("save-btn").textContent="Add Member";
   ["f-first","f-last","f-phone","f-email","f-nationality","f-location","f-notes"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("f-birth").value="";
+  document.getElementById("f-cell").value="";
+  document.getElementById("f-cell-leader").value="";
   document.getElementById("f-gender").value="";
   document.getElementById("f-group").value="";
   document.getElementById("modal").classList.add("open");
@@ -542,6 +555,8 @@ function openEdit(id){
   document.getElementById("f-email").value=v.email||"";
   document.getElementById("f-nationality").value=v.nationality||"";
   document.getElementById("f-birth").value=v.birth||"";
+  document.getElementById("f-cell").value=v.cell_group||"";
+  document.getElementById("f-cell-leader").value=v.cell_leader===true?"true":v.cell_leader===false?"false":"";
   document.getElementById("f-location").value=v.location||"";
   document.getElementById("f-notes").value=v.notes||"";
   document.getElementById("f-gender").value=v.gender||"";
@@ -563,6 +578,8 @@ async function saveMember(){
     email:document.getElementById("f-email").value.trim()||null,
     nationality:document.getElementById("f-nationality").value.trim()||null,
     birth:document.getElementById("f-birth").value||null,
+    cell_group:document.getElementById("f-cell").value||null,
+    cell_leader:document.getElementById("f-cell-leader").value===""?null:document.getElementById("f-cell-leader").value==="true",
     location:document.getElementById("f-location").value.trim()||null,
     notes:document.getElementById("f-notes").value.trim()||null,
   };
