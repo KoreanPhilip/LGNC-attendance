@@ -261,7 +261,7 @@ tbody tr:hover td{background:#fafaf7}
 
 <script>
 /* CONFIG */
-const SB_URL = "https://cgbbwozkvjxdytdynkbp.supabase.co/rest/v1/";
+const SB_URL = "https://cgbbwozkvjxdytdynkbp.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYmJ3b3prdmp4ZHl0ZHlua2JwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NjI4MzgsImV4cCI6MjA5ODAzODgzOH0.un85FWsQ9hLLnNtsyIc5sh45JdOZlzFo1zkpz19knQw";
 const db = supabase.createClient(SB_URL, SB_KEY);
 
@@ -364,19 +364,18 @@ function renderAtt(){
     }).join("")}</tbody></table></div>`;
 }
 
-async function mark(id, type) {
-  const date = document.getElementById("att-date").value;
-  const { error } = await db.from("attendance").upsert({
-    visitor_id: id,
-    service_date: date,
-    present: true,
-    attendance_type: type
-  }, { onConflict: "visitor_id,service_date" });
-  if (error) { toast("❌ " + error.message); return; }
-  ALL_ATT = ALL_ATT.filter(a => !(a.visitor_id === id && a.service_date === date));
-  ALL_ATT.push({ visitor_id: id, service_date: date, attendance_type: type });
+async function mark(id,type){
+  const date=document.getElementById("att-date").value;
+  const v=MEMBERS.find(x=>x.id===id);
+  const{error}=await db.from("attendance").upsert({
+    visitor_id:id,visitor_name:v?.first_name,visitor_email:v?.email,
+    service_date:date,present:true,attendance_type:type
+  },{onConflict:"visitor_id,service_date"});
+  if(error){toast("❌ "+error.message);return}
+  ALL_ATT=ALL_ATT.filter(a=>!(a.visitor_id===id&&a.service_date===date));
+  ALL_ATT.push({visitor_id:id,service_date:date,attendance_type:type});
   await loadAttendance();
-  toast(type === "online" ? "🌐 Marked online" : "⛪ Marked in person");
+  toast(type==="online"?"🌐 Marked online":"⛪ Marked in person");
 }
 
 async function unmark(id){
